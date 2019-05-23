@@ -23,11 +23,6 @@ Requirements
 This role requires ubuntu.
 
 
-Role Variables
---------------
-
-    terraform_version: 0.11.13
-
 Example Playbook
 ----------------
 
@@ -48,11 +43,17 @@ Run terrahelper the same way, you normally run the terraform command from within
 
 usage: terrahelper init | plan | apply | destroy [-s | --statesecret __SECRET__] [-d | --statedirectoy __STATEDIRECTORY__] [-f | --statefile terraform.tfstate] [-b | --statefilebackup terraform.tfstate.backup] [-e | --echo] [-h | --help] [any terraform parameters]
 
+
 If the following environment variables are set, the regarding parameters are obsolete:
+
 TH_SECRET - terrahelp secret used to de/encrypt the state
+
 TH_STATE_DIRECTORY - absolute or relative (from the terraform templates directory) path to the terraform state directory
+
 TH_STATE_FILE - terraform state file (defaults to terraform.tfstate)
+
 TH_STATE_FILE_BACKUP - terraform state file backup (defaults to terraform.tfstate.backup)
+
 
 You can also add any terrform command specific parameters to the end. They will be attached to the terraform command.
 
