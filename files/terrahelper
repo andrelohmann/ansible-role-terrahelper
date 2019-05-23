@@ -1,0 +1,248 @@
+#!/bin/bash
+
+# terrahelper wraps the following terraform + terrahelp best practice for small teams
+
+# Best practice:
+# - create a repository for your terraform template files
+# - create a repository for your the regarding terraform state
+# - keep the state separated from the terraform templates folder (that's why you need the second repo)
+# Workflow:
+# - create/edit your templates
+# - checkout latest state from the state repo
+# - decrypt state using terrahelp and your state secret
+# - run terraform plan/apply
+# - encrypt new state using terrahelp
+# - commit new state to state repo
+
+TERRAFORM_PARAMS=""
+
+# Usage description
+usage()
+{
+    echo "usage: terrahelper init | plan | apply | destroy [-s | --statesecret __SECRET__] [-d | --statedirectoy __STATEDIRECTORY__] [-f | --statefile terraform.tfstate] [-b | --statefilebackup terraform.tfstate.backup] [-e | --echo] [-h | --help] [any terraform parameters]
+
+If the following environment variables are set, the regarding parameters are obsolete:
+TH_SECRET - terrahelp secret used to de/encrypt the state
+TH_STATE_DIRECTORY - absolute or relative (from the terraform templates directory) path to the terraform state directory
+TH_STATE_FILE - terraform state file (defaults to terraform.tfstate)
+TH_STATE_FILE_BACKUP - terraform state file backup (defaults to terraform.tfstate.backup)
+
+You can also add any terrform command specific parameters to the end. They will be attached to the terraform command."
+}
+
+# was terrahelper run with init, plan or apply command?
+case "$1" in
+  init )
+    tf_command="init"
+    ;;
+  plan )
+    tf_command="plan"
+    ;;
+  apply )
+    tf_command="apply"
+    ;;
+  destroy )
+    tf_command="destroy"
+    ;;
+  -h | --help )
+    usage
+    exit 0
+    ;;
+  * )
+    usage
+    exit 1
+esac
+
+# shift one argument to the left
+shift
+
+# Use Environmentvariables if set
+[ ! -z "$TH_SECRET" ] && SECRET=$TH_SECRET
+[ ! -z "$TH_STATE_DIRECTORY" ] && STATEDIRECTORY=$TH_STATE_DIRECTORY
+[ ! -z "$TH_STATE_FILE" ] && STATEFILE=$TH_STATE_FILE
+[ ! -z "$TH_STATE_FILE_BACKUP" ] && STATEFILEBACKUP=$TH_STATE_FILE_BACKUP
+
+##### Read Arguments List
+while [ "$1" != "" ]; do
+  case $1 in
+    -s | --statesecret )
+      shift
+      SECRET=$1
+      ;;
+    -d | --statedirectoy )
+      shift
+      STATEDIRECTORY=$1
+      ;;
+    -f | --statefile )
+      shift
+      STATEFILE=$1
+      ;;
+    -b | --statefilebackup )
+      shift
+      STATEFILEBACKUP=$1
+      ;;
+    -e | --echo )
+        DO_ECHO="TRUE"
+        ;;
+    -h | --help )
+      usage
+      exit 0
+      ;;
+    * )
+      TERRAFORM_PARAMS="$TERRAFORM_PARAMS $1"
+  esac
+  shift
+done
+
+# set default STATEFILE and STATEFILE backup filenames
+[ -z "$STATEFILE" ] && STATEFILE="terraform.tfstate"
+[ -z "$STATEFILEBACKUP" ] && STATEFILEBACKUP="terraform.tfstate.backup"
+
+if [ -z "$SECRET" ]; then
+  echo "You need to set the state encryption secret (-s)"
+  exit 1
+fi
+
+if [ -z "$STATEDIRECTORY" ]; then
+  echo "You need to set the state directory (-d)"
+  exit 1
+fi
+
+# trim trailing slash on state directory
+STATEDIRECTORY=$(echo $STATEDIRECTORY | sed 's:/*$::')
+
+# terraform init
+init()
+{
+  terraform init -input=false$TERRAFORM_PARAMS
+  [ ! -z "$DO_ECHO" ] && echo "command: terraform init -input=false$TERRAFORM_PARAMS"
+}
+
+plan()
+{
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git pull
+
+  # decrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # decrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+  terraform get -update=true
+  terraform validate
+  terraform plan -input=false -state=$STATEDIRECTORY/$STATEFILE$TERRAFORM_PARAMS
+  [ ! -z "$DO_ECHO" ] && echo "command: terraform plan -input=false -state=$STATEDIRECTORY/$STATEFILE$TERRAFORM_PARAMS"
+
+  # encrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # encrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+}
+
+apply()
+{
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git pull
+
+  # decrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # decrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+  terraform get -update=true
+  terraform validate
+  terraform apply -input=false -state=$STATEDIRECTORY/$STATEFILE -state-out=$STATEDIRECTORY/$STATEFILE -auto-approve$TERRAFORM_PARAMS
+  [ ! -z "$DO_ECHO" ] && [ ! -z "$DO_ECHO" ] && echo "command: terraform apply -input=false -state=$STATEDIRECTORY/$STATEFILE -state-out=$STATEDIRECTORY/$STATEFILE -auto-approve$TERRAFORM_PARAMS"
+
+  # encrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # encrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+  # push new state
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git add .
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state"
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git config --global push.default simple
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git push origin
+
+}
+
+destroy()
+{
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git pull
+
+  # decrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # decrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+  terraform destroy -state=$STATEDIRECTORY/$STATEFILE -state-out=$STATEDIRECTORY/$STATEFILE -auto-approve$TERRAFORM_PARAMS
+  [ ! -z "$DO_ECHO" ] && echo "command: terraform destroy -state=$STATEDIRECTORY/$STATEFILE -state-out=$STATEDIRECTORY/$STATEFILE -auto-approve$TERRAFORM_PARAMS"
+
+  # encrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # encrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+  # push new state
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git add .
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state"
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git config --global push.default simple
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git push origin
+}
+
+case $tf_command in
+  init )
+    init
+    ;;
+  plan )
+    plan
+    ;;
+  apply )
+    apply
+    ;;
+  destroy )
+    destroy
+    ;;
+esac

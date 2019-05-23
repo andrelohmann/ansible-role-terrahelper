@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: terrahelper
+  author: andrelohmann
+  description: ansible galaxy role to wrap a terraform best practice, that uses a separate state repository, that is encrypted by terrahelp.
+  company: smartformer UG
+
+  license: MIT
+
+  min_ansible_version: 2.7
+
+  platforms:
+    - name: Ubuntu
+      versions:
+      - xenial
+      - bionic
+
+  galaxy_tags:
+  - terraform
+  - terrahelp
+  - terrahelper
+
+  dependencies:
+  - andrelohmann.terraform
+  - andrelohmann.terrahelp
+...

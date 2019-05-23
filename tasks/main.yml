@@ -1,0 +1,9 @@
+---
+- name: copy terrahelper command
+  copy:
+    src: "terrahelper"
+    dest: "/usr/local/bin/terrahelper"
+    owner: root
+    group: root
+    mode: 0755
+...
