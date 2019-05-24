@@ -19,7 +19,7 @@ TERRAFORM_PARAMS=""
 # Usage description
 usage()
 {
-    echo "usage: terrahelper init | plan | apply | destroy [-s | --statesecret __SECRET__] [-d | --statedirectoy __STATEDIRECTORY__] [-f | --statefile terraform.tfstate] [-b | --statefilebackup terraform.tfstate.backup] [-e | --echo] [-h | --help] [any terraform parameters]
+    echo "usage: terrahelper init | plan | apply | destroy | output [-s | --statesecret __SECRET__] [-d | --statedirectoy __STATEDIRECTORY__] [-f | --statefile terraform.tfstate] [-b | --statefilebackup terraform.tfstate.backup] [-e | --echo] [-h | --help] [any terraform parameters]
 
 If the following environment variables are set, the regarding parameters are obsolete:
 TH_SECRET - terrahelp secret used to de/encrypt the state
@@ -43,6 +43,9 @@ case "$1" in
     ;;
   destroy )
     tf_command="destroy"
+    ;;
+  output )
+    tf_command="output"
     ;;
   -h | --help )
     usage
@@ -232,6 +235,39 @@ destroy()
   GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git push origin
 }
 
+output()
+{
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git pull
+
+  # decrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # decrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp decrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+  terraform output -input=false -state=$STATEDIRECTORY/$STATEFILE$TERRAFORM_PARAMS
+  [ ! -z "$DO_ECHO" ] && echo "command: terraform plan -input=false -state=$STATEDIRECTORY/$STATEFILE$TERRAFORM_PARAMS"
+
+  # encrypt state file
+  if [ -f "$STATEDIRECTORY/$STATEFILE" ]
+  then
+	   terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILE -mode=inline --nobackup
+  fi
+
+  # encrypt state file backup
+  if [ -f "$STATEDIRECTORY/$STATEFILEBACKUP" ]
+  then
+  	terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
+  fi
+
+}
+
 case $tf_command in
   init )
     init
@@ -244,5 +280,8 @@ case $tf_command in
     ;;
   destroy )
     destroy
+    ;;
+  output )
+    output
     ;;
 esac

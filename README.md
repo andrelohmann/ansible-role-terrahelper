@@ -41,7 +41,7 @@ Therefor you need a state secret for the de-/encryption of the terraform state a
 
 Run terrahelper the same way, you normally run the terraform command from within your terraform templates directory.
 
-usage: terrahelper init | plan | apply | destroy [-s | --statesecret __SECRET__] [-d | --statedirectoy __STATEDIRECTORY__] [-f | --statefile terraform.tfstate] [-b | --statefilebackup terraform.tfstate.backup] [-e | --echo] [-h | --help] [any terraform parameters]
+usage: terrahelper init | plan | apply | destroy | output [-s | --statesecret __SECRET__] [-d | --statedirectoy __STATEDIRECTORY__] [-f | --statefile terraform.tfstate] [-b | --statefilebackup terraform.tfstate.backup] [-e | --echo] [-h | --help] [any terraform parameters]
 
 
 If the following environment variables are set, the regarding parameters are obsolete:
