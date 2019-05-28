@@ -154,6 +154,12 @@ plan()
   	terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
   fi
 
+  # push new state
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git add .
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state on 'terrahelper plan'"
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git config --global push.default simple
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git push origin
+
 }
 
 apply()
@@ -191,7 +197,7 @@ apply()
 
   # push new state
   GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git add .
-  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state"
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state on 'terrahlper apply'"
   GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git config --global push.default simple
   GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git push origin
 
@@ -230,7 +236,7 @@ destroy()
 
   # push new state
   GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git add .
-  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state"
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state on 'terrahlper destroy'"
   GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git config --global push.default simple
   GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git push origin
 }
@@ -265,6 +271,12 @@ output()
   then
   	terrahelp encrypt -simple-key=$SECRET -file=$STATEDIRECTORY/$STATEFILEBACKUP -mode=inline --nobackup
   fi
+
+  # push new state
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git add .
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git commit -m "Terrahelper Autocommit state on 'terrahlper output'"
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git config --global push.default simple
+  GIT_DIR=$STATEDIRECTORY/.git GIT_WORK_TREE=$STATEDIRECTORY git push origin
 
 }
 
